@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: fast-api
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # Host:Container
+
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/fast-api  # ✅ Fixed here
+      - JWT_SECRET_KEY=63f4945d921d599f27ae4fdf5bada3f1
+      - JWT_ALGORITHM=HS256
+    depends_on:
+      - db
+
+volumes:
+  db_data:
