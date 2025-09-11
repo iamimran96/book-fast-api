@@ -21,3 +21,16 @@ cd <your-repo-folder>
 ```bash
 docker compose up --build
 ```
+
+3. Access the API 
+
+```bash
+localhost:8080/docs
+```
+
+
+
+
+
+
+
