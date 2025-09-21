@@ -4,20 +4,24 @@ from fastapi.exceptions import HTTPException as HttpException
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from datetime import timedelta, datetime
 
-from src.auth.schemas import CreateUser, LoginUser
+from src.auth.schemas import CreateUser, LoginUser, User, UserBooks
 from src.db.main import get_session
 from src.auth.service import AuthService
 from src.auth.utils import verify_password, create_access_token
-from src.auth.dependencies import RefreshTokenBearer
+from src.auth.dependencies import RefreshTokenBearer, get_current_user, AccessTokenBearer, RoleChecker
+from src.auth.redis import add_jti_to_blocklist
 
 # Define the expiry time for the refresh token (2 days)
 REFRESH_TOKEN_EXPIRY = timedelta(days=2)
+
+# Role-based access control can be added as needed
+role_checker = RoleChecker(["admin", "user"])
 
 # Create a router for authentication-related endpoints
 auth_router = APIRouter()
 
 # POST /signup - Create a new user account
-@auth_router.post("/signup")
+@auth_router.post("/signup", response_model=User, status_code=status.HTTP_201_CREATED)
 async def create_user_account(create_user: CreateUser, session: AsyncSession = Depends(get_session)):
     """
     Endpoint to create a new user account.
@@ -44,8 +48,6 @@ async def login_user(user_login: LoginUser, session: AsyncSession = Depends(get_
     - Checks the provided password against the stored password hash.
     - If valid, generates and returns an access token and a refresh token.
     """
-    print(user_login)  # Useful for debugging; remove in production
-
     # Fetch user by email
     user = await AuthService.get_user_by_email(session, user_login.email)
 
@@ -55,7 +57,8 @@ async def login_user(user_login: LoginUser, session: AsyncSession = Depends(get_
             # Create token payload
             payload = {
                 "uid": str(user.uid),
-                "email": user.email
+                "email": user.email,
+                "role": user.role
             }
 
             # Generate access and refresh tokens
@@ -107,3 +110,28 @@ async def refresh_access_token(token_detials = Depends(RefreshTokenBearer())):
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Invalid or expired token"
     )
+
+# POST /logout - Log out the user (token revocation to be implemented)
+@auth_router.post("/logout")
+async def logout_user(token_detials = Depends(AccessTokenBearer())):
+    """
+    Endpoint to log out the user.
+
+    - Token revocation logic to be implemented.
+    """
+    # Token revocation logic to be implemented
+    jti = token_detials['jti']
+    await add_jti_to_blocklist(jti)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "message": "Logout successful"
+        }
+    )
+
+@auth_router.get("/me", response_model=UserBooks)
+async def get_current_user(
+    user = Depends(get_current_user),
+    _: bool = Depends(role_checker)
+    ) -> User:
+    return user

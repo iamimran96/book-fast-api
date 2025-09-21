@@ -21,6 +21,7 @@ class AuthService:
         user_create_data = user_create.model_dump()
         new_user = User(**user_create_data)
         new_user.password_hash = generate_password_hash(user_create_data['password'])
+        new_user.role = "user"
         db_session.add(new_user)
         await db_session.commit()
         return new_user

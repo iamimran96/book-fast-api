@@ -8,8 +8,11 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"  # Host:Container
-
+      - "5431:5432"  # Host:Container
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
   api:
     build:
       context: .
@@ -20,8 +23,11 @@ services:
       - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/fast-api  # ✅ Fixed here
       - JWT_SECRET_KEY=63f4945d921d599f27ae4fdf5bada3f1
       - JWT_ALGORITHM=HS256
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - db
-
+      - redis
 volumes:
   db_data:
